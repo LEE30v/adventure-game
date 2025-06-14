@@ -1,2 +1,3 @@
 # adventure game
-The best word input game in world!
+最棒的簡易文字遊戲！
+由pickadark/lee製作。
