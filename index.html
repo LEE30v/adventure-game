@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- OpenCC‑JS：繁→簡 -->
+  <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/t2cn.js"></script>
+  <title>冒險者之旅</title>
+  <style>
+
+    @font-face {
+  font-family: 'Unifont';
+  src: url('unifont.otf') format('opentype');
+}
+@font-face {
+  font-family: '辰宇落雁體2.0';
+  src: url('ChenYuLuoyan.ttf') format('truetype');
+}
+
+
+html{ font-size: clamp(16px, 2.2vw, 22px); }
+
+#coverScreen {
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+#coverTitle {
+  font-size: 2.4rem;
+  font-family: 'Unifont', monospace;
+  margin-bottom: 40px;
+}
+
+#startButton {
+  font-size: 1.2rem;
+  padding: 15px 30px;
+  background-color: #444;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  color: white;
+}
+
+#startButton:hover {
+  background-color: #666;
+}
+
+
+    body { font-family: 'Courier New',
+     monospace; background-color:
+      #111; color: #eee; padding: 40px;
+    text-align: left; }
+    #story { white-space: pre-line; margin-bottom: 40px; font-size: 1.2rem; }
+
+    .choice-button {
+      background-color: #444;
+      color: #fff;
+      border: none;
+      padding: 20px 40px;
+      margin: 10px 20px 10px 0;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 1rem;
+      display: inline-block;
+      text-align: center;
+    }
+    .choice-button:hover { background-color: #666; }
+    #inventory { margin-top: 40px; font-size: 0.95rem; color: #aaa; }
+    #inputArea {
+      display: none;
+      margin-top: 40px;
+      font-size: 1.25rem;
+      font-family: 'Courier New', monospace;
+    }
+    #swingInput { padding: 11px; width: 440px;
+      font-size: 1.25rem;
+    }
+    #timer { font-size: 1.15rem; color: #f72323; margin-top: 20px; display: none; }
+    #qteArea {
+      display: none;
+      margin-top: 40px;
+      color: rgb(255, 255, 0);
+      font-size: 1.3rem;
+    }
+    #story {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 10px; /* 可調整 */
+  white-space: pre-line;
+  font-size: 1.2rem;
+  text-align: left;
+  z-index: 500; /* 確保不是被遮住 */
+}
+#choices {
+  position: absolute;
+  top: 120px;   /* 可以根據需要調整 */
+  left: 10px;
+  margin: 0;
+  padding: 0;
+  z-index: 501;
+}
+
+    #knightBattleArea {
+      position: relative;
+      width: 100%;
+      height: 300px;
+    }
+
+    #moveSwordBtn {
+      position: absolute;
+      transform: scale(1.30);   
+    }
+
+    #indoJournal{
+      display:none;                 
+      position:fixed;
+      top:0; left:0;
+      width:100%; height:100%;
+      background: rgba(0,0,0,0.85) url('note_bg.png') center/90% auto no-repeat;
+      background-blend-mode: multiply;    
+      color:#eee;
+      font-family:'辰宇落雁體2.0','Unifont',monospace;
+      padding:40px;
+      overflow-y:auto;
+      z-index:1001;
+    }
+    #journalPage{white-space:pre-line;font-size:1.25rem;margin-bottom:20px;}
+    #pageNum{margin-bottom:20px;}
+    #prevPage,#nextPage,#closeJournal{
+      background:#444;
+      color:#fff;
+      border:none;
+      padding:10px 20px;
+      margin:0 5px;
+      border-radius:5px;
+      cursor:pointer;
+    }
+    #prevPage:hover,#nextPage:hover,#closeJournal:hover{background:#666;}
+
+    #moveSwordBtn.hit {
+  animation: hitFlash 0.2s ease;
+}
+
+@keyframes hitFlash {
+  0% { transform: scale(1.3); background-color: #fff; color: #000; }
+  50% { transform: scale(1.45); background-color: #f00; color: #fff; }
+  100% { transform: scale(1.3); background-color: #444; color: #fff; }
+}
+
+/* ==== 語言切換按鈕 ==== */
+#langToggle{
+  position:fixed;
+  top:10px;
+  right:10px;
+  z-index:2000;
+}
+#langToggle button{
+  background:#272727;
+  color:#fff;
+  border:none;
+  padding:6px 12px;
+  margin-left:4px;
+  border-radius:4px;
+  cursor:pointer;
+}
+#langToggle button:hover{background:#666;}
+  
+  </style>
+</head>
+<body>
+  <div id="langToggle">
+  <button id="langTC">繁體中文</button>
+  <button id="langSC">简体中文</button>
+</div>
+   <div id="swordQTE" style="display:none; text-align:center; position:relative; height:300px;">
+</div>
+<div id="story"></div>
+  <div id="choices"></div>
+  <div id="timer"></div>
+  <div id="qteArea"></div>
+  <div id="inputArea">
+    請輸入指令（SWING! 或 SHOOT!）：<br>
+    <input type="text" id="swingInput">
+    <button class="choice-button" id="submitSwing">送出</button>
+  </div>
+  <div id="inventory"></div>
+  <div id="indoJournal">
+  <div id="journalPage"></div>
+  <div id="pageNum"></div>
+  <button id="prevPage">上一頁</button>
+  <button id="nextPage">下一頁</button>
+  <button id="closeJournal">關閉</button>
+</div>
+  <div id="knightBattleArea" style="display: none;">
+    <button id="moveSwordBtn">揮劍</button>
+  </div>
+
+  <img src="crack1.png" class="crack hidden" id="crack1" />
+  <img src="crack2.png" class="crack hidden" id="crack2" />
+  <img src="crack3.png" class="crack hidden" id="crack3" />
+  <img src="note_bg.png" class="indo note" id="indonote" />
+  <div id="bowQTE" style="display:none; position:relative; height:300px;">
+  <img id="target" src="beast.png" style="position:absolute; width:50px; height:50px; filter: drop-shadow(0 0 6px white);">
+</div>
+  <div id="coverScreen">
+  <div id="coverTitle">冒險者之旅</div>
+  <button id="startButton">開始遊戲</button>
+  </div>
+
+  <script>
+    /* ===== 語言工具 ===== */
+let currentLang = localStorage.getItem('lang') || 'tc';
+
+/* 建立繁→簡轉換器 (tw → cn) */
+const t2cn = OpenCC.Converter({ from: 'tw', to: 'cn' });
+
+function tr(str){
+  return currentLang === 'sc' ? t2cn(str) : str;
+}
+    document.addEventListener('DOMContentLoaded', () => {
+      const sounds = { 
+        victory_sword: new Audio('sfx/揮劍.mp3'),
+        monster_roar: new Audio('sfx/嚎叫.mp3'),
+        noweapon_fight: new Audio('sfx/格鬥.mp3'),
+        bow_shoot: new Audio('sfx/bowshoot.mp3'),
+        noise_roar: new Audio('sfx/大聲嚎叫.mp3'),
+        sword_swing: new Audio('sfx/swing.mp3'),
+        knight_battle: new Audio('sfx/騎士之戰.mp3')
+      };                                     
+      const story = document.getElementById('story');
+      const choices = document.getElementById('choices');
+      const inventory = document.getElementById('inventory');
+      const inputArea = document.getElementById('inputArea');
+      const swingInput = document.getElementById('swingInput');
+      const submitSwing = document.getElementById('submitSwing');
+      const timer = document.getElementById('timer');
+      const qteArea = document.getElementById('qteArea');
+      const knightBattleArea = document.getElementById('knightBattleArea');
+      const moveSwordBtn = document.getElementById('moveSwordBtn');
+      const coverScreen = document.getElementById('coverScreen');
+const startButton = document.getElementById('startButton');
+          startButton.onclick = () => {
+  coverScreen.style.display = 'none';
+  promptName();
+  console.log('名字輸入完成：', playerName);
+  console.log('渲染 start');
+
+const past = JSON.parse(localStorage.getItem('pastRoutes') || '[]');
+past.push({ name: playerName, route: [] });   
+localStorage.setItem('pastRoutes', JSON.stringify(past));
+currentRunIdx = past.length - 1;              
+route = [];                                   
+  renderScene('start');
+};
+// 語言切換
+document.getElementById('langTC').onclick = () => {
+  currentLang = 'tc';
+  localStorage.setItem('lang', 'tc');
+  document.getElementById('coverTitle').textContent = tr('冒險者之旅');
+  document.getElementById('startButton').textContent = tr('開始遊戲');
+
+  /* 只有在遊戲已經開始（封面被隱藏）時才重新渲染場景 */
+  if (coverScreen.style.display === 'none') {
+    renderScene(gameState);
+  }
+};
+
+document.getElementById('langSC').onclick = () => {
+  currentLang = 'sc';
+  localStorage.setItem('lang', 'sc');
+  document.getElementById('coverTitle').textContent = tr('冒險者之旅');
+  document.getElementById('startButton').textContent = tr('開始遊戲');
+
+  /* 僅在遊戲已經開始時刷新內容，避免封面還在時被遮罩成「黑畫面」 */
+  if (coverScreen.style.display === 'none') {
+    renderScene(gameState);
+  }
+};
+
+      let isDev = false;
+      let isGod = false;
+      let playerName = '';  
+      let currentRunIdx = -1;          
+
+function recordProgress() {
+  const past = JSON.parse(localStorage.getItem('pastRoutes') || '[]');
+  if (currentRunIdx >= 0 && currentRunIdx < past.length) {
+    past[currentRunIdx].route = [...route];   
+    localStorage.setItem('pastRoutes', JSON.stringify(past));
+  }
+}
+      let gameState = 'start';
+      let items = [];
+      let lastBattle = '';
+      let route = [];
+      let dodgeTimeout, countdownInterval;
+let bgm;
+
+
+document.body.addEventListener('click', () => {
+  if (bgm && bgm.paused) {
+    bgm.play().catch(e => console.warn('BGM播放失敗:', e));
+  }
+});
+
+function switchBGM(src) {
+  if (bgm) {
+    bgm.pause();
+    bgm.currentTime = 0;
+  }
+  bgm = new Audio(src);
+  bgm.loop = true;
+  bgm.volume = 0.3;
+}
+let swordClicks = 0;
+let swordTimer;
+let moveButtonInterval;   
+
+function startKnightBattle() {
+  swordClicks = 0;
+  knightBattleArea.style.display = 'block';
+  timer.style.display = 'block';
+  let timeLeft = 7;   
+  timer.textContent = tr(`倒數：${timeLeft}秒 | 成功次數：${swordClicks}/3`);
+  moveSwordBtn.style.display = 'block';
+
+  function moveButton() {
+    const x = Math.random() * (knightBattleArea.clientWidth - 100);
+    const y = Math.random() * (knightBattleArea.clientHeight - 50);
+    moveSwordBtn.style.left = `${x}px`;
+    moveSwordBtn.style.top = `${y}px`;
+  }
+
+  moveButtonInterval = setInterval(moveButton, 935);
+
+moveSwordBtn.onclick = () => {
+  swordClicks++;
+  timer.textContent = tr(`倒數：${timeLeft}秒 | 成功次數：${swordClicks}/3`);
+
+  moveSwordBtn.classList.add('hit');
+  setTimeout(() => moveSwordBtn.classList.remove('hit'), 200);
+
+  if (swordClicks >= 3) {
+    clearInterval(swordTimer);
+    clearInterval(moveButtonInterval);
+    knightBattleArea.style.display = 'none';
+    timer.style.display = 'none';
+    renderScene('gotBow');
+  }
+};
+
+  swordTimer = setInterval(() => {
+    timeLeft--;
+    timer.textContent = `倒數：${timeLeft}秒 | 成功次數：${swordClicks}/3`;
+    moveButton();
+    if (timeLeft <= 0) {
+      clearInterval(swordTimer);
+      clearInterval(moveButtonInterval);
+      knightBattleArea.style.display = 'none';
+      timer.style.display = 'none';
+      renderScene('knightfail');
+    }
+  }, 1000);
+
+  moveButton();
+}
+let flags = { knightBeaten: false };
+const indoJournal = document.getElementById('indoJournal');
+const journalPage = document.getElementById('journalPage');
+const pageNum = document.getElementById('pageNum');
+const prevPage = document.getElementById('prevPage');
+const nextPage = document.getElementById('nextPage');
+const closeJournal = document.getElementById('closeJournal');
+
+let pages = [];
+let currentPage = 0;
+
+function openJournal() {
+  if (!indoJournal || !journalPage || !pageNum) return;
+  pages = generateJournalPages(); 
+  currentPage = 0;
+  showPage();
+  indoJournal.style.display = 'block';
+}
+
+function showPage() {
+  if (!journalPage || !pageNum) return;
+  journalPage.textContent = pages[currentPage] || '這一頁是空白的……';
+  pageNum.textContent = `第 ${currentPage + 1} 頁`;
+}
+
+if (prevPage) {
+  prevPage.onclick = () => {
+    if (currentPage > 0) {
+      currentPage--;
+      showPage();
+    }
+  };
+}
+
+if (nextPage) {
+  nextPage.onclick = () => {
+    if (currentPage < pages.length - 1) {
+      currentPage++;
+      showPage();
+    }
+  };
+}
+
+if (closeJournal) {
+  closeJournal.onclick = () => {
+    if (indoJournal) indoJournal.style.display = 'none';
+  };
+}
+
+function generateJournalPages() {
+  const past = JSON.parse(localStorage.getItem('pastRoutes') || '[]');
+  const pages = [];
+
+  past.forEach((entry, idx) => {
+    const nameLine = `當時使用的名字：${entry.name || '未知'}`;
+    const header = `第 ${idx + 1} 次來此：`;
+    const steps = entry.route.map(r => {
+      const line = `你選擇了「${r.choice}」。`;
+      const note = getNoteForScene(r.scene);
+      return note ? `${line}\n    → 註：${note}` : line;
+    }).join('\n');
+
+    pages.push(`${header}\n${nameLine}\n${steps}`);
+  });
+
+  return pages;
+}
+
+function getNoteForScene(sceneKey) {
+  switch (sceneKey) {
+    case 'takeTreasure':
+      return '他選擇了財富，而不是靈魂。貪婪是人的本性。';
+    case 'saveEnemy':
+      return '他試圖救人，難道他沒法看出背後的結果嗎？';
+    case 'leave':
+      return '他畏懼了黑暗，但也因此活了下來。（膽小有時可以改變命運）';
+    case 'armed':
+      return '能夠看到魔法劍的人，少之又少，更別提能夠拔出它的人了。';
+    case 'hall':
+      return '走入城堡大廳的人，從來沒有出來過。';
+    case 'inkcy':
+      return '真是有趣。這個闖入者的殘影才剛來過，結果本尊就到了。';
+    case 'inkcyblackman':
+      return '哈哈，竟然有人會打聽過去的自己的事？';
+    case 'wandering':
+      return '黑衣人難得成功了一次，可喜可賀！';
+        case 'wandering2':
+      return '黑衣人難得成功了一次，可喜可賀！';
+        case 'wandering3':
+      return '黑衣人難得成功了一次，可喜可賀！';
+    case 'gotbow':
+      return '大部分闖入者都敗在了騎士的劍下，但他這次的劍法確實高超，竟能取得騎士誓死守護的長弓。不簡單。';
+    case 'newWorld':
+      return '新世界，這片蒼翠森林的魔法力量與城堡截然不同，但依然在城堡之內。';
+    case 'knightfail':
+      return '被騎士殺死？這是很正常的事。騎士的劍術放眼世界也難有敵手，那種速度與猛勁是常人無法抵擋的。';
+    default:
+      return '';   
+  }
+}
+function getRandomWanderScene() {
+  const options = ['wandering', 'wandering2', 'wandering3'];
+  return options[Math.floor(Math.random() * options.length)];
+}
+
+      const scenes = {
+        start: {
+          text: '黃昏時分，你站在一座古老的城堡前，天色漸暗。\n風穿過斷裂的尖塔，像低聲的警告，也像遠方的召喚。\n整座城堡散發著詭異的氛圍，但深深地吸引著你。\n你要怎麼做？',
+          onEnter: () => {
+  switchBGM('bgm/城堡.mp3');
+},
+          options: [
+            { text: '進入城堡', next: 'hall' },
+            { text: '離開這裡', next: 'leave' }
+          ]
+        },
+        hall: {
+          text: '你走進大廳，兩旁掛著褪色的畫像，畫中的人物靜靜地凝視著每一位闖入者。\n前方有兩條通道，要選哪一邊呢？',
+          options: [
+            { text: '左邊的通道',next: () => (flags.knightBeaten ? 'library2' : 'library') },
+            { text: '右邊的通道', next: 'dungeon' }
+          ]
+        },
+        library: {
+          text: '你進入了一個古老的圖書館，每本書似乎都記載了淵妙的知識。\n牆上掛著一把修長優雅的長弓，角落的書本竟自動翻開來。',
+          onEnter: () => {
+  switchBGM('bgm/book.mp3');
+},
+          options: [
+            { text: '拾起長弓', next: 'knightfight'},
+            { text: '觸摸書頁', next: 'portal' },
+            { text: '離開', next: 'hall', effect: () => switchBGM('bgm/城堡.mp3') },
+            { text: '前往圖書館的更深處', next: 'librarydeep' }
+          ]
+        },
+         library2: {
+          text: '你進入了一個古老的圖書館，每本書似乎都記載了淵妙的知識。\n角落的書本竟自動翻開來。',
+          options: [
+            { text: '觸摸書頁', next: 'portal' },
+            { text: '離開', next: 'hall', effect: () => switchBGM('bgm/城堡.mp3')  },
+            { text: '前往圖書館的更深處', next: 'librarydeep' }
+          ]
+        },
+        librarydeep: {
+          text: '你走進圖書館的更深處，這裡的書架異常高聳，書本內頁閃爍著幽藍的光芒，淡淡的古老書香與墨水的氣息飄散在空氣中。\n你在遠處看到了一張書桌，你隱約看到書桌後似乎有人影。',
+          options: [
+            { text: '觸摸書頁', next: 'portal' },
+            { text: '前往書桌處', next: 'inkcy' },
+          ]
+        },
+        librarydeep2: {
+          text: '你走進圖書館的更深處，這裡的書架異常高聳，書本內頁閃爍著幽藍的光芒，淡淡的古老書香與墨水的氣息飄散在空氣中。\n你在遠處看到了一張書桌，你隱約看到書桌後似乎有人影。\n轉角突然閃現一道轉瞬即逝的黑影，緊接著身披黑衣的身影就出現在面前。黑衣人問：「剛才，你去找墨跡了是嗎？」\n你點點頭，他又問：「她有告訴你什麼嗎？」。\n你要怎麼做？',
+                    onEnter: () => {
+  switchBGM('bgm/book.mp3');
+},
+          options: [
+            { text: '告訴他有關墨跡的筆記的事', next: 'blackmannote' },
+            { text: '告訴他墨跡對他的評語', next: 'blackmancomment' },
+            { text: '回到書桌處', next: 'inkcy' },
+            { text: '離開', next: () => (flags.knightBeaten ? 'library2' : 'library')}
+          ]
+        },
+        blackmannote: {
+          text: '你告訴他墨跡的筆記。\n黑衣人聽後勃然大怒，說：「她還在寫！？永遠只冷眼旁觀，看著一個又一個『主角』毀滅世界？」\n「她的筆記毫無意義！那該死的人為何要不斷地記錄每一個闖入者的爛抉擇，然後讓他們繼續爛！？」他搖搖頭。\n「我只想找到一條能改變過去的路。」',
+          options: [
+            { text: '結束對話', next: 'librarydeep2' }
+          ]
+        },   
+
+        gotBow: {
+          text: '騎士的身體化為青煙，盔甲散落一地。\n你取得遊俠長弓。\n圖書館依舊寧靜。',
+          options: [
+            { text: '看書', next: 'portal', effect: () => { items.push('遊俠長弓'); flags.knightBeaten = true; } },
+            { text: '忽略書本', next: () => (flags.knightBeaten ? 'library2' : 'library') }
+          ]
+        },
+        portal: {
+          text: '你觸碰古老的泛黃書頁，刺眼的青色光束從中射出，其中開啟了一道傳送門，你被吸入其中。\n要進入新世界嗎？',
+          options: [
+            { text: '進入', next: 'portalnext' },
+            { text: '不進入', next: () => (flags.knightBeaten ? 'library2' : 'library') }
+          ]
+        },
+         portalnext: {
+          text: '你感受到一股強烈的拉扯感以及一陣暈眩，光芒如水般將你包裹，重力失去了方向。\n你在時空之中失重墜入了一個未知的世界。',
+          options: [
+            { text: '繼續', next: 'newWorld' },
+          ]
+        },
+
+
+        newWorld: {
+          text: '你來到一片蒼翠的森林，空氣瀰漫著魔力與清新的氣息，\n石台上插著一把劍，看起來聖潔而強大。',
+           onEnter: () => {
+  switchBGM('bgm/新世界.mp3');
+},
+          options: [
+            { text: '拔劍', next: 'pullSword' },
+            { text: '四處探索', next: 'forest' },
+            { text: '前往南方草原', next: 'plain' },
+            { text: '回到地牢', next: 'dungeon', effect: () => switchBGM('bgm/城堡.mp3')  }
+          ]
+        },
+        newWorld2: {
+          text: '你來到蒼翠的森林，空氣瀰漫著魔力與清新的氣息，\n石台上插著一把劍，看起來聖潔而強大。',
+           onEnter: () => {
+  switchBGM('bgm/新世界.mp3');
+},
+          options: [
+            { text: '四處探索', next: 'forest' },
+            { text: '前往南方草原', next: 'plain' },
+            { text: '回到地牢', next: 'dungeon', effect: () => switchBGM('bgm/城堡.mp3')  }
+          ]
+        },
+        plain: {
+          text: '你前往南方的草原，但你走路的動靜驚醒了沉眠此地的魔獸！牠以矯健的身軀向你撲來，你得快點閃避！',
+          onEnter: () => { lastBattle = 'plain'; showDodge(); },
+          options: []
+        },
+        forest: {
+          text: '你四處探索這片森林，越是前往深處，越能感到一股牽引力。\n樹木開始變得更加茂密、高大，遠處竟傳來了長笛的聲音。',
+          options: [
+            { text: '繼續探索', next: 'temple' },
+            { text: '回到石台處', next: 'newWorld' }
+          ]
+        },
+        temple: {
+          text: '你來到一座古老的神殿，整座神殿由白石構成，散發淡淡的光芒。\n神殿中央有一座祭壇，中央是一塊石板。那石板呈薄荷色，金色和銀色在其中流動。\n祭壇周圍環繞著神秘的符文，彷彿在守護著這塊石板。',
+          onEnter: () => {switchBGM('bgm/qualia.mp3');
+},          options: [
+            { text: '拿起石板',next: () => (flags.gotsword ? 'gotstone' : 'gotstonefail') },
+            { text: '回到石台處',next: () => (flags.gotsword ? 'newWorld2' : 'newWorld') }
+          ]
+        },
+
+        gotstonefail: {
+          text: '你緩步向前，輕輕地拿起石板，但身後傳來一聲喝斥。「放回去！」\n你將石板放回祭壇，轉身看見一名仙風道骨的老者。老者說：「聖劍與靈石板控制著這片森林，聖劍很強大，但靈石板之於魔法劍就像劍客之於劍。」\n「你須要靈石板才能釋放魔法劍的真正力量，但就像劍客不能沒有劍，靈石板也不能沒有聖劍。」\n「如果你真得想要那石板，把劍也帶過來吧！」',
+          options: [
+            { text: '回到石台處', next: 'newWorld' }
+          ]
+        },
+                
+        beast: {
+          text: '你地ㄗ',
+          options: [
+            { text: '回到石台處', next: 'newWorld' }
+          ]
+        },
+        gotstone: {
+          text: '你緩步向前，輕輕地拿起石板，這時，一名仙風道骨的老者出現在你面前，他說：「你的劍閃耀著上古神鐵的光澤........是魔法劍嗎？抽出來給我看看。」',
+          options: [
+            { text: '拔出魔法劍給他看', next: 'gotstonepower' },
+            { text: '逃回石台處', next: 'newWorld2' }
+          ]
+        },
+        gotstonepower: {
+          text: '你拔出魔法劍，劍身散發出耀眼的光芒，老者驚訝地說：「果然是上古聖劍！這把劍的力量與靈石板相輔相成，只有將它們結合，才能釋放出真正的力量。」\n「現在將它們結合再一起吧！」老者說。話音剛落，石板飄了起來，其中央的金色和銀色化為無數絲線，緩緩地流入魔法劍。\n同時，魔法劍也開始繞著石板旋轉，石板最後變成了一塊普通的薄荷色石板，失去了其中流竄的金色和銀色。',
+          options: [
+            { text: '逃回石台處', next: 'newWorld2' }
+          ]
+        },
+        pullSword: {
+          text: '你雙手握住劍柄，一道神聖、純潔但強大到難以承受的力量從劍身流出，你需要在正確的時機拔出魔法劍！',
+          onEnter: () => { showQTE('sword', 'armed', 'pullFail'); },
+          options: []
+        },
+        pullFail: {
+          text: '你拔劍時機錯誤，魔法劍反噬了你，你失去了意識……',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        inkcy: {
+          text: '你走向整個圖書館中唯一的書桌。\n書桌後站著一個高䠷的人，身著灰色與水藍色的長袍，戴著米色的細框眼鏡，一頭銀白色的長髮披散及肩。\n雖然她白髮蒼蒼，但全身上下看不出一絲老態，甚至像是年輕女子。\n她有些急躁的說：「在下墨跡。圖書館之主，不速之客的記錄者。」',
+          onEnter: () => {
+  switchBGM('bgm/墨跡.mp3');
+},
+          options: [{ text: '詢問她有關這裡的事', next: 'inkcyinfo' },
+                    { text: '詢問她有關黑衣人的事', next: 'inkcyblackman' },
+                    { text: '查看桌上的記事本', next: 'opennote' },
+                    { text: '離開', next: 'librarydeep2' }]
+        },
+        inkcyblackman: {
+          text: '你問她有關黑衣人的事。\n「黑衣人？闖入者過去的影子、未來的警告者，他嘗試力挽狂瀾。」她回答。\n「哎，我已經跟他說過他不可能成功了，只要看看我的筆記本就知道.........但他還是繼續嘗試。」她搖搖頭。',
+          options: [{ text: '結束對話', next: 'inkcy' }]
+        },
+        inkcyinfo: {
+          text: '你問她這裡是哪裡。\n「這裡？這裡是永遠不至黎明之地，不斷重啟的城堡。這裡是墨跡的圖書館，所有的知識在此誕生，卻流向他處。」她回答。',
+          options: [{ text: '結束對話', next: 'inkcy' }]
+        },
+        opennote: {
+          text: '「這是我的筆記本，記錄了所有選擇。我想，它目前內容不多。」她說。\n「如果你想了解更多，請隨意翻閱。」她說。\n「小心一件事，你讀過的東西會改變你。',
+          options: [{ text: '放棄打開', next: 'inkcy' },
+                    { text: '打開筆記本', next: 'inkcynote', effect: () => openJournal() }]
+        },
+        
+        inkcynote: {
+          text: '你看了桌上的記事本。\n墨跡說的話讓你有些背脊發涼，你不確定翻開它究竟是不是正確的選擇。',
+          options: [
+            { text: '闔上筆記本', next: 'inkcy', effect: () => { if (indoJournal) indoJournal.style.display = 'none'; } }
+          ]
+        },
+        tunnel: {
+          text: '你前往地牢的更深處，這裡陰暗潮濕，路邊躺著許多骷髏。\n咆哮聲變得更響亮了，你感到一股危險的氣息。\n路邊擺著一個腐朽的木盒，裡頭裝著一把完全由純金打造的匕首。\n你要拿起它嗎？',
+          onEnter: () => {
+    sounds.noise_roar.currentTime = 0;
+    sounds.noise_roar.play().catch(e => console.warn('音效無法播放：', e));
+  },
+          options: [
+            { text: '拿起匕首', next: 'preFight', effect: () => { items.push('黃金匕首'); } },
+            { text: '忽略', next: 'preFight'}
+          ]
+        },
+        armed: {
+          text: '你將魔法劍插入劍鞘中，劍刃竟劃破了厚實的皮革。\n你感到劍深處更強的能量在內部蠢蠢欲動，但你不知如何釋放。',
+          onEnter: () => {
+            items.push('魔法劍'); flags.gotsword = true; 
+          },
+          options: [
+            { text: '繼續', next: 'newWorld2' },
+          ]
+        },
+        encounter: {
+          text: '一頭魔獸突然從草叢中蹦了出來，你手無寸鐵，現在需要的是依賴反應閃避！',
+          onEnter: () => { lastBattle = 'encounter'; showDodge(); },
+          options: []
+        },
+        dungeon: {
+          text: '你身在黑暗的地牢，深處傳來一聲聲低吼......有什麼東西正在逼近。\n血跡斑斑的牆壁上，充滿了裂痕，彷彿那裡曾是某個山洞的入口。',
+         onEnter: () => {
+    sounds.monster_roar.currentTime = 0;
+    sounds.monster_roar.play().catch(e => console.warn('音效無法播放：', e));
+  },
+          options: [
+            { text: '往更深處前進', next: 'tunnel' },
+            { text: '回大廳', next: 'hall' },
+            { text: '前往一旁的森林石門', next: 'newWorld' }
+          ]
+        },
+        preFight: {
+          text: '你面對地牢深處的魔獸，牠的身影猛得竄出，發出一聲怒吼衝向你，你得快點閃避！',
+          onEnter: () => { lastBattle = 'fight'; showDodge(); },
+          options: []
+        },
+        
+         fight2: {
+  text: '你徒手與兇猛的魔獸搏鬥了起來，經過一番激戰，雖然身受重傷，但依然成功地打敗了牠。',
+  onEnter: () => {
+    sounds.noweapon_fight.currentTime = 0;
+    sounds.noweapon_fight.play().catch(e => console.warn('音效無法播放：', e));
+  },
+  options: [
+    { text: '繼續', next: 'postEncounter' }
+  ]
+},
+       fight: {
+  text: '你掏出黃金匕首與兇猛的魔獸搏鬥了起來，經過一番激戰，雖然身受重傷，但依然成功地打敗了牠。',
+  onEnter: () => {
+    sounds.noweapon_fight.currentTime = 0;
+    sounds.noweapon_fight.play().catch(e => console.warn('音效無法播放：', e));
+  },
+  options: [
+    { text: '繼續', next: 'alternateDungeon' }
+  ]
+},
+
+        dodgeSuccess: {
+          text: '你靈巧的閃避了魔獸的攻擊。\n現在你可以反擊了。請輸入SWING!或SHOOT!進行攻擊。',
+          requireSwing: true,
+          options: []
+        },
+        dodgeFail: {
+          text: '你被魔獸的利牙撕裂，倒下了。',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        postEncounter: {
+          text: '你負傷逃離魔獸，成為倖存者。',
+          options: [
+            { text: '回地牢', next: 'alternateDungeon' }
+          ]
+        },
+        knightfight: {
+          text: '就當你的手即將搆到長弓時，鏢槍破空而過的聲音響起。鏢槍精準的插入了你手掌旁的牆壁，離你的手只有幾毫米的距離。\n你轉過身，看到一名全副武裝的騎士，他冷冷的說：「遊俠長弓隸屬於西方遊俠，你無權觸碰。」\n他抽出腰間的長劍，在你來得及反應前，將另一把長劍丟給你。他說：「想拿到長弓，就得先贏過我。」\n一場決鬥一觸即發。',
+          options: [
+            { text: '迎戰', next: 'knightattack', effect: () => items.push('長劍') }
+          ]
+        },
+        knightfail: {
+          text: '騎士一劍揮出，刺入你的心臟。\n隨著血花噴濺而出，你感到生命的流逝。',
+          options: [
+            { text: '重新遊玩', next: 'cover', effect: () => goToCover() }
+          ]
+        },
+        knightattack: {
+          text: '騎士揮舞長劍，流暢精確的動作讓你措手不及。\n如果你不快速閃避，你必將小命不保。',
+          onEnter: () => {
+            lastBattle = 'knightattack';
+            showDodge();
+          },
+          options: [] 
+        },
+        knightbeat: {
+          text: '你一再閃避，終於看見了一絲破綻。\n你必須飛快的揮劍方可擊殺騎士！',
+          onEnter: [
+            () => {
+              lastBattle = 'knightattack';
+              setTimeout(startKnightBattle, 1000);
+            },
+            () => {
+              sounds.knight_battle.currentTime = 0;
+              sounds.knight_battle.play().catch(e => console.warn('音效無法播放：', e));
+            }
+          ],
+          options: []
+        },
+     
+alternateDungeon: {
+  text: '此時，一名神秘的黑衣男子在此等候，他說：「我也曾經站在這裡，面對同樣的抉擇。你走吧，總比我當初的選擇好。\n「還有一件事，」黑衣人說。「你和我一樣，有著掌握時間線的力量。你會再來的，但是記住一件事：千萬、千萬不要帶著金匕首回到這裡。」',
+  onEnter: enterAlternateDungeon,
+  options: []
+},
+        wandering: {
+          text: '你踏上無盡的旅程，既無榮耀也無財寶，但這是你的命運。\n臨走前，黑衣人說了一句話：「其實我是你哥哥，你媽一直都沒跟你說————等等，搞錯劇本了。」',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        wandering2: {
+          text: '你踏上無盡的旅程，既無榮耀也無財寶，但這是你的命運。\n臨走前，黑衣人說了一句話：「我現在要講的這段話，本來應該要很有哲理的.........但我們資金不足，只好直接說掰掰。」',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        wandering3: {
+          text: '你踏上無盡的旅程，既無榮耀也無財寶，但這是你的命運。\n臨走前，黑衣人看了你一眼：「我應該要說什麼很感人的話，但我午餐還沒吃，我先走了。」',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        randomWander: {
+  text: '',
+  onEnter: () => {
+    const randomScene = getRandomWanderScene();
+    renderScene(randomScene);
+  },
+  options: []
+},
+       treasure: {
+          text: '你看到了一個陳舊的寶箱，裝著閃耀的寶石與成噸的黃金以及你這輩子望塵莫及的財富。然而，一旁的岩縫中卻卡著一名旅人，鮮血從他唇角滴落，他以最後的力氣嘶啞地向你說著救命。\n他說：「如果我死了，把這封信燒掉。千萬不能讓任何人知道上面寫什麼...不然……全城會……」\
+他眼神渙散，但你知道他說的是真的。\n這時，黑衣男子出現了，他微笑著說：「寶藏與人命，你只能選一個。」',
+          options: [
+            { text: '救人', next: 'saveEnemy' },
+            { text: '奪寶', next: 'takeTreasure', effect: () => items.push('寶石', '卷軸') }
+          ]
+        },
+        rich: {
+          text: '你帶著寶藏離開，成為了富有的傳奇冒險家。',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        victory_sword: {
+  text: '你揮舞魔法劍，劍尖綻放清澈的光芒，你以敏捷剛猛且俐落的一擊將魔獸的首級斬於劍下。隨著頭顱落地的悶響，你站立在敵人屍首前，突然在歡呼聲中驚覺過來自己已然成了新世界的英雄！',
+  onEnter: () => {
+    sounds.victory_sword.currentTime = 0;
+    sounds.victory_sword.play().catch(e => console.warn('音效無法播放：', e));
+  },
+  options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+},
+        victory_bow: {
+          text: '你拉滿弓弦，一箭貫穿眉心，魔獸發出一聲哀鳴後，不支倒地。你矗立在遠處，伴隨著人們的歡呼聲，你成了新世界的英雄！',
+          onEnter: () => {
+    sounds.bow_shoot.currentTime = 0;
+    sounds.bow_shoot.play().catch(e => console.warn('音效無法播放：', e));
+  },
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        fail: {
+          text: '攻擊失敗，被魔獸重創……你英勇犧牲。',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+        saveEnemy: {
+          text: '你選擇救人，放棄了寶藏。他虛弱地說出謝謝，卻在數年後引發了戰火與災厄，染血千里。你的選擇害死了數千萬人，你成了眾人口中的「救世之錯」。',
+          onEnter: () => {
+  switchBGM('bgm/save.mp3');
+},
+
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        },
+       takeTreasure: {
+  text: '你毫不猶豫地拿起寶藏，離開了那具微微顫抖的身體。你成為富有的傳奇，卻在每夜夢中見到那雙眼睛……\n只要你閉上眼，就能聽到他虛弱的質問，看到那既憤怒又絕望的困惑眼神。',
+          onEnter: () => {
+  switchBGM('bgm/奪寶.mp3');
+},
+  options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+       },
+        leave: {
+          text: '你離開了城堡，也許，你改日會回到此地面對命運。',
+          options: [{ text: '重新遊玩', next: 'cover', effect: () => goToCover() }]
+        }
+      };
+
+
+  
+      function resetGame() {  
+  items = [];
+  gameState = 'start';
+  lastBattle = '';
+  route = [];
+  window.__hasSeenDungeon = true;
+  const currentName = playerName || '無名者';
+
+}
+
+function goToCover() {
+  stopAllAudio();
+    const devPanel = document.getElementById('devPanel');
+  if (devPanel) devPanel.remove();
+  isDev = false;
+  isGod = false;
+  resetGame();
+  coverScreen.style.display = 'flex';
+  story.textContent = '';
+  choices.innerHTML = '';
+  inventory.textContent = '';
+  timer.style.display = 'none';
+  inputArea.style.display = 'none';
+}
+   
+function typeText(element, text, speed = 50, callback) {
+  let i = 0;
+  element.textContent = '';
+
+  function type() {
+    if (i < text.length) {
+      element.textContent += text.charAt(i);
+      i++;
+      setTimeout(type, speed);
+    } else if (typeof callback === 'function') {
+      callback();
+    }
+  }
+
+  type();
+}
+  
+
+  function renderScene(key) {
+  // —— God-mode bypass ——
+if (isGod) {
+  const godBypass = {
+    dodgeFail : 'dodgeSuccess',
+    pullFail  : 'armed',
+    knightfail: 'gotBow',
+    fail      : items.includes('魔法劍')
+                  ? 'victory_sword'
+                  : (items.includes('遊俠長弓') ? 'victory_bow' : 'dodgeSuccess')
+  };
+  if (godBypass[key]) key = godBypass[key];
+}
+  clearTimeout(dodgeTimeout);
+  clearInterval(countdownInterval);
+  timer.style.display = 'none';
+  inputArea.style.display = 'none';
+  qteArea.style.display = 'none';
+
+  const scene = scenes[key];
+  if (!scene) {
+    console.error('未知場景', key);
+    return;
+  }
+
+  gameState = key;
+  choices.innerHTML = '';
+  swingInput.value = '';
+  if (scene.requireSwing) inputArea.style.display = 'block';
+  if (scene.onEnter) {
+    if (Array.isArray(scene.onEnter)) {
+      scene.onEnter.forEach(fn => typeof fn === 'function' && fn());
+    } else if (typeof scene.onEnter === 'function') {
+      scene.onEnter();
+    }
+  }
+
+  //typeText(story, scene.text, 30, () => {
+  story.textContent = tr(scene.text);
+   if (scene.options) {
+  scene.options.forEach(o => {
+    const b = document.createElement('button');
+    b.textContent = tr(o.text);
+    b.className = 'choice-button';
+b.onclick = () => {
+  const dest = (typeof o.next === 'function') ? o.next() : o.next;
+
+  route.push({ scene: dest, choice: o.text });
+  recordProgress();
+  o.effect && o.effect();
+  renderScene(dest);
+};
+    choices.appendChild(b);
+  });
+}
+    inventory.textContent = items.length ? tr(`裝備：${items.join(', ')}`) : '';
+    positionChoicesBelowStory();
+}
+
+
+
+submitSwing.onclick = () => {
+  if (!scenes[gameState]?.requireSwing) return;
+  let v = swingInput.value.trim().toUpperCase();
+
+  if (v === 'SWING!' && items.includes('魔法劍')) {
+    startSwordQTE(); 
+  } else if (v === 'SHOOT!' && items.includes('遊俠長弓')) {
+    startBowQTE(); 
+  } else {
+    renderScene('fail');
+  }
+};
+
+      function showDodge() {
+        const opts = ['蹲下', '大叫', '逃跑', '閃避', '裝死', '舉劍'].sort(() => Math.random() - 0.5);
+        let c = 3;
+        timer.style.display = 'block';
+        timer.textContent = tr(`倒數：${c}秒`);
+        countdownInterval = setInterval(() => {
+          c--;
+          if (c > 0) timer.textContent = tr(`倒數：${c}秒`);
+          else {
+            clearInterval(countdownInterval);
+            timer.style.display = 'none';
+          }
+        }, 1000);
+        choices.innerHTML = '';
+        opts.forEach(txt => {
+          let b = document.createElement('button');
+          b.textContent = tr(txt);
+          b.className = 'choice-button';
+          b.onclick = () => {
+            clearTimeout(dodgeTimeout);
+            clearInterval(countdownInterval);
+            timer.style.display = 'none';
+            if (txt === '閃避') {
+              if (lastBattle === 'fight') {
+                if (items.includes('黃金匕首')) {
+                  renderScene('fight');
+                } else {
+                  renderScene('fight2');
+                }
+              }
+              else if (lastBattle === 'plain' || lastBattle === 'encounter') {
+                if (!items.includes('魔法劍') && !items.includes('遊俠長弓')) {
+                  renderScene('fight2');
+                } else {
+                  renderScene('dodgeSuccess');
+                }
+              } else if (lastBattle === 'knightattack') {
+                renderScene('knightbeat');
+              } else {
+                renderScene('postEncounter');
+              }
+            } else {
+              if (lastBattle === 'knightattack') {
+                renderScene('knightfail');
+              } else {
+                renderScene('dodgeFail');
+              }
+            }
+          };
+          choices.appendChild(b);
+        });
+        dodgeTimeout = setTimeout(() => {
+  if (lastBattle === 'knightattack') {
+    renderScene('knightfail');
+  } else {
+    renderScene('dodgeFail');
+  }
+}, 3000);
+      }
+
+function enterAlternateDungeon() {
+  const lastName = localStorage.getItem('lastPlayerName');
+  const past = JSON.parse(localStorage.getItem('pastRoutes') || '[]');
+  const recent = past.slice(-2);  
+
+let bothChoseTreasure = recent.length === 2 &&
+  recent.every(r => r.route.some(step => step.scene === 'takeTreasure'));
+
+if (bothChoseTreasure) {
+  scenes.alternateDungeon.text +=
+    `\n「我見過那孩子死十七次了。我記得每一張臉上的血……你還笑得出來嗎？」`;
+}
+const savedEnemyCount = past.filter(r =>
+  r.route.some(step => step.scene === 'saveEnemy')
+).length;
+
+if (savedEnemyCount >= 2) {
+  scenes.alternateDungeon.text +=
+    `\n「你以為善良能拯救世界？每一次你救他，都有更多人死去……你是來贖罪，還是來重演災難？」`;
+}
+
+  if (items.includes('黃金匕首')) {
+    if (window.__hasSeenDungeon) {
+      scenes.alternateDungeon.text =
+        `黑衣人見你再次來到這裡，臉上浮現幾分哀傷。\n「我不是警告你了嗎？不要帶上那把匕首，它會逼你做出選擇.........\n「看來，劇本的迴圈終究無法打破。」` +
+        (lastName ? `\n「上次你叫 ${lastName}，你還記得那一切嗎？」` : '');
+      scenes.alternateDungeon.options = [
+        { text: '走向命運', next: 'treasure' }
+      ];
+    } else {
+      scenes.alternateDungeon.text =
+        '此時，一名神秘的黑衣男子在此等候，他說：「貪婪，真是熟悉的氣味……我曾也是如此。」';
+      scenes.alternateDungeon.options = [
+        { text: '前往寶藏所在地', next: 'treasure' }
+      ];
+      window.__hasSeenDungeon = true;
+    }
+  } else {
+    scenes.alternateDungeon.text =
+      '此時，一名神秘的黑衣男子在此等候。\n他仔細打量你，聲音低沉但透著一絲不確定：「我也曾經站在這裡，面對同樣的抉擇。」' +
+      (lastName ? `\n「你不是 ${lastName} 嗎？還是我搞錯了...」` : '') +
+      '\n「你走吧，總比我當初的選擇好。\n「還有一件事，」黑衣人說。「你和我一樣，有著掌握時間線的力量。你會再來的，但是記住一件事：千萬、千萬不要帶著金匕首回到這裡。」';
+    scenes.alternateDungeon.options = [
+      { text: '接受', next: 'randomWander' }
+    ];
+    window.__hasSeenDungeon = true;
+  }
+}
+
+
+  const qte = document.getElementById('swordQTE');
+  const outer = document.getElementById('outerRing');
+  const inner = document.getElementById('innerRing');
+
+  qte.style.display = 'block';
+
+  let radius = 120;
+  let interval = null;
+  
+function startSwordQTE() {
+  const comboSequence = ['ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowDown'];
+  let currentIndex = 0;
+  let timeout;
+
+  const qte = document.getElementById('swordQTE');
+  qte.style.display = 'block';
+  story.textContent = '劍氣聚集……請依照畫面提示輸入連擊方向！';
+  choices.innerHTML = '';
+  timer.style.display = 'block';
+  timer.textContent = `第 1 步：⬆️`;
+
+  function arrowEmoji(key) {
+    return {
+      ArrowUp: '⬆️',
+      ArrowDown: '⬇️',
+      ArrowLeft: '⬅️',
+      ArrowRight: '➡️'
+    }[key] || '';
+  }
+
+  function onKeyDown(e) {
+    if (e.key === comboSequence[currentIndex]) {
+      sounds.sword_swing.currentTime = 0;
+      sounds.sword_swing.play().catch(e => console.warn('音效播放失敗：', e));
+      currentIndex++;
+      if (currentIndex < comboSequence.length) {
+        timer.textContent = `第 ${currentIndex + 1} 步：${arrowEmoji(comboSequence[currentIndex])}`;
+      } else {
+        endQTE(true);
+      }
+    } else {
+      endQTE(false);
+    }
+  }
+
+  function endQTE(success) {
+    clearTimeout(timeout);
+    document.removeEventListener('keydown', onKeyDown);
+    qte.style.display = 'none';
+    timer.style.display = 'none';
+    renderScene(success ? 'victory_sword' : 'fail');
+  }
+
+  timeout = setTimeout(() => endQTE(false), 8000); // 時限：8秒
+  document.addEventListener('keydown', onKeyDown);
+}  
+
+
+function startBowQTE() {
+  const bowQTE = document.getElementById('bowQTE');
+  const target = document.getElementById('target');
+  bowQTE.style.display = 'block';
+
+  // 加上準星
+const crosshair = document.createElement('div');
+crosshair.style.position = 'absolute';
+crosshair.style.width = '1px';
+crosshair.style.height = '1px';
+crosshair.style.pointerEvents = 'none';
+crosshair.style.zIndex = '9999';
+crosshair.style.transform = 'translate(-50%, -50%)';
+
+const vertical = document.createElement('div');
+vertical.style.position = 'absolute';
+vertical.style.width = '2px';
+vertical.style.height = '20px';
+vertical.style.background = '#fff';
+vertical.style.top = '-10px';
+crosshair.appendChild(vertical);
+
+const horizontal = document.createElement('div');
+horizontal.style.position = 'absolute';
+horizontal.style.width = '20px';
+horizontal.style.height = '2px';
+horizontal.style.background = '#fff';
+horizontal.style.left = '-10px';
+crosshair.appendChild(horizontal);
+
+bowQTE.appendChild(crosshair);
+
+  document.body.style.cursor = 'none'; // 隱藏滑鼠
+
+  // 目標出現位置
+  let x = Math.random() * (bowQTE.clientWidth - 40);
+  let y = Math.random() * (bowQTE.clientHeight - 40);
+  target.style.left = `${x}px`;
+  target.style.top = `${y}px`;
+
+  function moveCrosshair(e) {
+    crosshair.style.left = `${e.clientX}px`;
+    crosshair.style.top = `${e.clientY}px`;
+  }
+
+  function checkClick(e) {
+    const rect = target.getBoundingClientRect();
+    if (
+      e.clientX >= rect.left &&
+      e.clientX <= rect.right &&
+      e.clientY >= rect.top &&
+      e.clientY <= rect.bottom
+    ) {
+      cleanup(true);
+    } else {
+      cleanup(false);
+    }
+  }
+
+  function cleanup(success) {
+    bowQTE.style.display = 'none';
+    document.removeEventListener('mousemove', moveCrosshair);
+    document.removeEventListener('click', checkClick);
+    document.body.style.cursor = 'default';
+    crosshair.remove();
+    renderScene(success ? 'victory_bow' : 'fail');
+  }
+
+  document.addEventListener('mousemove', moveCrosshair);
+  document.addEventListener('click', checkClick);
+
+  setTimeout(() => cleanup(false), 3000);
+}
+function promptName() {
+  let name = '';
+  while (!name.trim()) {
+    name = prompt('請輸入你的名字：') || '';
+    if (!name.trim()) alert('名字不能是空白喔。墨跡會記不住你。');
+  }
+
+  const previousName = localStorage.getItem('lastPlayerName'); 
+  playerName = name.trim();
+  isDev = (playerName === '1030607darkedtroll');
+  if (isDev) setupDevPanel(); 
+  if (previousName && previousName === playerName) {
+    setTimeout(() => {
+      alert('「那個名字…你知道你以前也這樣叫自己嗎？」');
+    }, 500);
+  }
+
+  localStorage.setItem('lastPlayerName', playerName); 
+}
+
+      function plantSeed(name) {
+  flags[name] = true;
+}      
+function setupDevPanel() {
+  // UI 外框
+  const panel = document.createElement('div');
+  panel.id = 'devPanel';
+  Object.assign(panel.style, {
+    position: 'fixed',
+    top: '10px',
+    left: '10px',
+    padding: '10px',
+    background: 'rgba(0,0,0,0.75)',
+    color: '#0f0',
+    fontSize: '0.85rem',
+    lineHeight: '1.4',
+    zIndex: 3000
+  });
+
+  panel.innerHTML = `
+    <div style="margin-bottom:6px;">[開發者模式]</div>
+    <input id="devItemInput" placeholder="Item" style="width:112px;">
+    <button id="devAddItemBtn">增加該物品</button><br>
+    <input id="devSceneInput" placeholder="Scene" style="width:112px;margin-top:4px;">
+    <button id="devGoSceneBtn">跳至該場景</button>
+    <button id="devAddFlagBtn">增加該旗標</button><br>
+    <input id="devSceneInput" placeholder="Scene" style="width:112px;margin-top:4px;">
+       <input type="checkbox" id="godModeToggle"> 無敵模式
+  </label>
+  `;
+  document.body.appendChild(panel);
+
+  // 加 item
+  document.getElementById('devAddItemBtn').onclick = () => {
+    const val = document.getElementById('devItemInput').value.trim();
+    if (!val) return;
+    if (!items.includes(val)) items.push(val);
+    inventory.textContent = items.length ? tr(`裝備：${items.join(', ')}`) : '';
+    document.getElementById('devItemInput').value = '';
+  };
+  // —— 新增 flag ——  
+  document.getElementById('devAddFlagBtn').onclick = () => {
+    const name = document.getElementById('devFlagInput').value.trim();
+    if (!name) return;
+    flags[name] = true;
+    alert(`已設置 flag：${name}`);
+    document.getElementById('devFlagInput').value = '';
+  };
+
+  document.getElementById('devGoSceneBtn').onclick = () => {
+    const sk = document.getElementById('devSceneInput').value.trim();
+    if (sk && scenes[sk]) {
+      route.push({ scene: sk, choice: '[DEV-jump]' });
+      renderScene(sk);
+    } else {
+      alert('無此場景 key');
+    }
+  };
+document.getElementById('godModeToggle').onchange = e => {
+  isGod = e.target.checked;
+  alert(isGod ? '無敵模式ON' : '無敵模式OFF');
+};
+
+}
+function stopAllAudio() {
+  if (bgm) {
+    bgm.pause();
+    bgm.currentTime = 0;
+  }
+  Object.values(sounds).forEach(a => {
+    a.pause?.();
+    try { a.currentTime = 0; } catch (_) {}
+  });
+}
+function positionChoicesBelowStory() {
+  const storyRect = story.getBoundingClientRect();
+  choices.style.position = 'absolute';
+  inventory.style.position = 'absolute';
+  inventory.style.top = `${storyRect.bottom + 60}px`;
+  inventory.style.left = `${storyRect.left}px`;
+  choices.style.top = `${storyRect.bottom + 10}px`; // 再往下 10px 空間
+  choices.style.left = `${storyRect.left}px`;
+  timer.style.position = 'absolute';
+  timer.style.top = `${storyRect.bottom + 100}px`;
+  timer.style.left = `${storyRect.left}px`;
+  qteArea.style.position = 'absolute';
+  qteArea.style.top = `${storyRect.bottom + 140}px`;
+  qteArea.style.left = `${storyRect.left}px`;
+}
+      function showQTE(type, successScene, failScene) {
+        const qteWord = type === 'bomb' ? '跳開' : '拔劍';
+        const opts = ['尖叫', '握拳', '跳開', '翻滾', '拔劍', '跳舞', '吐口水', '揮手'].sort(() => Math.random() - 0.5);
+        let c = 2;
+        qteArea.style.display = 'block';
+        qteArea.textContent = tr(`快速反應：請點選「${qteWord}」才能成功！ 倒數：${c}秒`);
+        countdownInterval = setInterval(() => {
+          c--;
+          if (c > 0) qteArea.textContent = tr(`快速反應：請點選「${qteWord}」才能成功！ 倒數：${c}秒`);
+          else {
+            clearInterval(countdownInterval);
+            renderScene(failScene);
+          }
+        }, 1000);
+        choices.innerHTML = '';
+        opts.forEach(txt => {
+          const b = document.createElement('button');
+          b.textContent = tr(txt);
+          b.className = 'choice-button';
+          b.onclick = () => {
+            clearInterval(countdownInterval);
+            if (txt === qteWord) {                  
+            (successScene);
+            } else {
+              renderScene(failScene);
+            }
+          };
+          choices.appendChild(b);
+        });
+      }
+
+    });
+</script>
+</body>
+</html>
